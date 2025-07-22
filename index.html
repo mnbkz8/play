@@ -2,21 +2,24 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>リバーシ</title>
   <style>
-    body { text-align: center; }
-    table { border-collapse: collapse; margin: auto; }
+    body { text-align: center; margin: 0; }
+    table { border-collapse: collapse; margin: auto; width: 100%; max-width: 320px; }
     td {
-      width: 40px; height: 40px;
+      width: 12.5vw; height: 12.5vw;
+      max-width: 40px; max-height: 40px;
       border: 1px solid black;
       background: green;
       position: relative;
+      box-sizing: border-box;
     }
     .disk {
-      width: 30px; height: 30px;
+      width: 80%; height: 80%;
       border-radius: 50%;
       position: absolute;
-      top: 5px; left: 5px;
+      top: 10%; left: 10%;
     }
     .black { background: black; }
     .white { background: white; }
@@ -25,16 +28,23 @@
 <body>
   <h1>リバーシ（2人対戦）</h1>
   <div id="turn">黒の番です</div>
+  <p>タップして石を置いてね</p>
   <table id="board"></table>
+  <button id="reset">リセット</button>
 
   <script>
     const board = document.getElementById("board");
+    document.getElementById("reset").addEventListener("click", () => {
+      board.innerHTML = "";
+      init();
+    });
     const size = 8;
     const EMPTY = 0, BLACK = 1, WHITE = 2;
     let current = BLACK;
     let grid = [];
 
     function init() {
+      board.innerHTML = "";
       grid = Array.from({length: size}, () => Array(size).fill(EMPTY));
       grid[3][3] = WHITE; grid[3][4] = BLACK;
       grid[4][3] = BLACK; grid[4][4] = WHITE;
