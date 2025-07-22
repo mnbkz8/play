@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>リバーシ</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; }
+    table { border-collapse: collapse; margin: 20px auto; }
+    td {
+      width: 40px; height: 40px;
+      border: 1px solid #333;
+      background-color: #0a7f3f;
+      position: relative;
+    }
+    .disk {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      position: absolute;
+      top: 5px; left: 5px;
+    }
+    .black { background: black; }
+    .white { background: white; border: 1px solid #aaa; }
+  </style>
+</head>
+<body>
+  <h1>リバーシ（2人対戦）</h1>
+  <div id="turn">黒の番です</div>
+  <table id="board"></table>
+
+  <script>
+    const board = document.getElementById('board');
+    const size = 8;
+    const EMPTY = 0, BLACK = 1, WHITE = 2;
+    let current = BLACK;
+    let grid = [];
+
+    function init() {
+      grid = Array.from({length: size}, () => Array(size).fill(EMPTY));
+      grid[3][3] = WHITE; grid[3][4] = BLACK;
+      grid[4][3] = BLACK; grid[4][4] = WHITE;
+
+      for (let y = 0; y < size; y++) {
+        const row = board.insertRow();
+        for (let x = 0; x < size; x++) {
+          const cell = row.insertCell();
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+          cell.addEventListener('click', handleClick);
+        }
+      }
+      render();
+    }
+
+    function render() {
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const cell = board.rows[y].cells[x];
+          cell.innerHTML = '';
+          if (grid[y][x] !== EMPTY) {
+            const disk = document.createElement('div');
+            disk.className = 'disk ' + (grid[y][x] === BLACK ? 'black' : 'white');
+            cell.appendChild(disk);
+          }
+        }
+      }
+      document.getElementById('turn').textContent = current === BLACK ? '黒の番です' : '白の番です';
+    }
+
+    function handleClick(e) {
+      const x = +e.currentTarget.dataset.x;
+      const y = +e.currentTarget.dataset.y;
+      if (!canPut(x, y, current)) return;
+      put(x, y, current);
+      current = current === BLACK ? WHITE : BLACK;
+      render();
+    }
+
+    const dirs =
