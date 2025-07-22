@@ -90,6 +90,10 @@
       display: block;
       margin: 0.2em 0;
     }
+    #options label.corner {
+      display: inline-block;
+      margin-right: 0.5em;
+    }
     #options label select {
       margin-left: 0.5em;
     }
@@ -105,28 +109,28 @@
     <label><input type="checkbox" id="showBlack" checked>くろゴースト</label>
     <label><input type="checkbox" id="showWhite" checked>しろゴースト</label>
     <div>かどハンデ:</div>
-    <label>↖
+    <label class="corner">↖
       <select class="handicap" data-pos="tl">
         <option value="0">なし</option>
         <option value="1">くろ</option>
         <option value="2">しろ</option>
       </select>
     </label>
-    <label>↗
+    <label class="corner">↗
       <select class="handicap" data-pos="tr">
         <option value="0">なし</option>
         <option value="1">くろ</option>
         <option value="2">しろ</option>
       </select>
     </label>
-    <label>↙
+    <label class="corner">↙
       <select class="handicap" data-pos="bl">
         <option value="0">なし</option>
         <option value="1">くろ</option>
         <option value="2">しろ</option>
       </select>
     </label>
-    <label>↘
+    <label class="corner">↘
       <select class="handicap" data-pos="br">
         <option value="0">なし</option>
         <option value="1">くろ</option>
@@ -236,7 +240,7 @@
       }
 
       render();
-      animateFlip([[x, y], ...flips]);
+      animateFlip([[x, y], ...flips], x, y);
     }
 
     const dirs = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
@@ -294,17 +298,18 @@
   function playSound() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = 500;
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now + 0.15);
+    [0, 0.1].forEach(off => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.2, now + off);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + off + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + off);
+      osc.stop(now + off + 0.05);
+    });
   }
 
     function canPut(x, y, color) {
@@ -347,17 +352,19 @@
       return flipped;
     }
 
-    function animateFlip(cells) {
-      cells.forEach(([x, y], i) => {
-        const cell = board.rows[y].cells[x];
-        const disk = cell.querySelector('.disk');
-        if (disk) {
-          setTimeout(() => {
-            disk.classList.add('flipped');
-            setTimeout(() => disk.classList.remove('flipped'), 300);
-          }, i * 80);
-        }
-      });
+    function animateFlip(cells, px, py) {
+      cells
+        .sort((a, b) => Math.hypot(a[0]-px, a[1]-py) - Math.hypot(b[0]-px, b[1]-py))
+        .forEach(([x, y], i) => {
+          const cell = board.rows[y].cells[x];
+          const disk = cell.querySelector('.disk');
+          if (disk) {
+            setTimeout(() => {
+              disk.classList.add('flipped');
+              requestAnimationFrame(() => disk.classList.remove('flipped'));
+            }, i * 80);
+          }
+        });
     }
 
   function showWinner() {
