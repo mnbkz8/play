@@ -2,15 +2,14 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>リバーシ</title>
   <style>
-    body { text-align: center; font-family: sans-serif; }
-    table { border-collapse: collapse; margin: 20px auto; }
+    body { text-align: center; }
+    table { border-collapse: collapse; margin: auto; }
     td {
       width: 40px; height: 40px;
-      border: 1px solid #333;
-      background-color: #0a7f3f;
+      border: 1px solid black;
+      background: green;
       position: relative;
     }
     .disk {
@@ -20,7 +19,7 @@
       top: 5px; left: 5px;
     }
     .black { background: black; }
-    .white { background: white; border: 1px solid #aaa; }
+    .white { background: white; }
   </style>
 </head>
 <body>
@@ -29,7 +28,7 @@
   <table id="board"></table>
 
   <script>
-    const board = document.getElementById('board');
+    const board = document.getElementById("board");
     const size = 8;
     const EMPTY = 0, BLACK = 1, WHITE = 2;
     let current = BLACK;
@@ -46,7 +45,7 @@
           const cell = row.insertCell();
           cell.dataset.x = x;
           cell.dataset.y = y;
-          cell.addEventListener('click', handleClick);
+          cell.addEventListener("click", handleClick);
         }
       }
       render();
@@ -58,13 +57,13 @@
           const cell = board.rows[y].cells[x];
           cell.innerHTML = '';
           if (grid[y][x] !== EMPTY) {
-            const disk = document.createElement('div');
-            disk.className = 'disk ' + (grid[y][x] === BLACK ? 'black' : 'white');
+            const disk = document.createElement("div");
+            disk.className = "disk " + (grid[y][x] === BLACK ? "black" : "white");
             cell.appendChild(disk);
           }
         }
       }
-      document.getElementById('turn').textContent = current === BLACK ? '黒の番です' : '白の番です';
+      document.getElementById("turn").textContent = current === BLACK ? "黒の番です" : "白の番です";
     }
 
     function handleClick(e) {
@@ -76,4 +75,44 @@
       render();
     }
 
-    const dirs =
+    const dirs = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
+
+    function canPut(x, y, color) {
+      if (grid[y][x] !== EMPTY) return false;
+      for (const [dx, dy] of dirs) {
+        let nx = x + dx, ny = y + dy;
+        let found = false;
+        while (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+          if (grid[ny][nx] === EMPTY) break;
+          if (grid[ny][nx] === color) {
+            if (found) return true;
+            else break;
+          }
+          found = true;
+          nx += dx; ny += dy;
+        }
+      }
+      return false;
+    }
+
+    function put(x, y, color) {
+      grid[y][x] = color;
+      for (const [dx, dy] of dirs) {
+        let nx = x + dx, ny = y + dy;
+        const flip = [];
+        while (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+          if (grid[ny][nx] === EMPTY) break;
+          if (grid[ny][nx] === color) {
+            for (const [fx, fy] of flip) grid[fy][fx] = color;
+            break;
+          }
+          flip.push([nx, ny]);
+          nx += dx; ny += dy;
+        }
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
