@@ -38,11 +38,24 @@
       top: 10%;
       left: 10%;
       box-shadow: inset 0 0 2px rgba(0,0,0,0.4);
+      transition: transform 0.3s;
+      transform-style: preserve-3d;
     }
     .black { background: #000; }
     .white { background: #fff; }
     .ghost {
-      opacity: 0.4;
+      opacity: 0.2;
+    }
+    .count {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 0.6em;
+      color: #d33;
+      pointer-events: none;
+    }
+    .flipped {
+      transform: rotateY(180deg);
     }
     #score {
       font-size: 1.2em;
@@ -90,6 +103,7 @@
     const EMPTY = 0, BLACK = 1, WHITE = 2;
     let current = BLACK;
     let grid = [];
+    let audioCtx;
 
     function init() {
       board.innerHTML = "";
@@ -128,6 +142,10 @@
         const ghost = document.createElement("div");
         ghost.className =
           "disk ghost " + (current === BLACK ? "black" : "white");
+        const cnt = document.createElement("div");
+        cnt.className = 'count';
+        cnt.textContent = countFlips(x, y, current);
+        ghost.appendChild(cnt);
         cell.appendChild(ghost);
       }
 
@@ -140,13 +158,14 @@
       const x = +e.currentTarget.dataset.x;
       const y = +e.currentTarget.dataset.y;
       if (!canPut(x, y, current)) return;
-      put(x, y, current);
+      const flips = put(x, y, current);
+      playSound();
       current = current === BLACK ? WHITE : BLACK;
 
       if (getValidMoves(current).length === 0) {
         const other = current === BLACK ? WHITE : BLACK;
         if (getValidMoves(other).length === 0) {
-          showMessage('これ以上置ける場所がありません');
+          showWinner();
           render();
           return;
         } else {
@@ -156,6 +175,7 @@
       }
 
       render();
+      animateFlip([[x, y], ...flips]);
     }
 
     const dirs = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
@@ -170,20 +190,58 @@
       return moves;
     }
 
-  function updateScore() {
+  function getScore() {
     let b = 0, w = 0;
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          if (grid[y][x] === BLACK) b++;
-          else if (grid[y][x] === WHITE) w++;
-        }
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (grid[y][x] === BLACK) b++;
+        else if (grid[y][x] === WHITE) w++;
       }
+    }
+    return [b, w];
+  }
+
+  function updateScore() {
+    const [b, w] = getScore();
     scoreEl.textContent = `黒:${b} 白:${w}`;
   }
 
   function showMessage(msg) {
     messageEl.textContent = msg;
     setTimeout(() => { messageEl.textContent = ''; }, 1500);
+  }
+
+  function countFlips(x, y, color) {
+    if (grid[y][x] !== EMPTY) return 0;
+    let total = 0;
+    for (const [dx, dy] of dirs) {
+      let nx = x + dx, ny = y + dy;
+      let flips = 0;
+      while (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+        if (grid[ny][nx] === EMPTY) { flips = 0; break; }
+        if (grid[ny][nx] === color) break;
+        flips++;
+        nx += dx; ny += dy;
+      }
+      if (nx >= 0 && ny >= 0 && nx < size && ny < size && grid[ny][nx] === color) {
+        total += flips;
+      }
+    }
+    return total;
+  }
+
+  function playSound() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 500;
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
   }
 
     function canPut(x, y, color) {
@@ -206,19 +264,41 @@
 
     function put(x, y, color) {
       grid[y][x] = color;
+      const flipped = [];
       for (const [dx, dy] of dirs) {
         let nx = x + dx, ny = y + dy;
         const flip = [];
         while (nx >= 0 && ny >= 0 && nx < size && ny < size) {
           if (grid[ny][nx] === EMPTY) break;
           if (grid[ny][nx] === color) {
-            for (const [fx, fy] of flip) grid[fy][fx] = color;
+            for (const [fx, fy] of flip) {
+              grid[fy][fx] = color;
+              flipped.push([fx, fy]);
+            }
             break;
           }
           flip.push([nx, ny]);
           nx += dx; ny += dy;
         }
       }
+      return flipped;
+    }
+
+    function animateFlip(cells) {
+      for (const [x, y] of cells) {
+        const cell = board.rows[y].cells[x];
+        const disk = cell.querySelector('.disk');
+        if (disk) {
+          disk.classList.add('flipped');
+          requestAnimationFrame(() => disk.classList.remove('flipped'));
+        }
+      }
+    }
+
+    function showWinner() {
+      const [b, w] = getScore();
+      if (b === w) showMessage('引き分け');
+      else showMessage(b > w ? '黒の勝ち!' : '白の勝ち!');
     }
 
     init();
