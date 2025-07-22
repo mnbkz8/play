@@ -82,6 +82,17 @@
       min-height: 1.2em;
       margin: 0.5em;
     }
+    #message.winner {
+      font-size: 2em;
+      font-weight: bold;
+    }
+    #options label {
+      display: block;
+      margin: 0.2em 0;
+    }
+    #options label select {
+      margin-left: 0.5em;
+    }
   </style>
 </head>
 <body>
@@ -93,15 +104,35 @@
   <div id="options">
     <label><input type="checkbox" id="showBlack" checked>くろゴースト</label>
     <label><input type="checkbox" id="showWhite" checked>しろゴースト</label>
-    <span>かど:</span>
-    <label><input type="checkbox" class="handicap" data-pos="tl">↖</label>
-    <label><input type="checkbox" class="handicap" data-pos="tr">↗</label>
-    <label><input type="checkbox" class="handicap" data-pos="bl">↙</label>
-    <label><input type="checkbox" class="handicap" data-pos="br">↘</label>
-    <select id="handiColor">
-      <option value="1">くろ</option>
-      <option value="2">しろ</option>
-    </select>
+    <div>かどハンデ:</div>
+    <label>↖
+      <select class="handicap" data-pos="tl">
+        <option value="0">なし</option>
+        <option value="1">くろ</option>
+        <option value="2">しろ</option>
+      </select>
+    </label>
+    <label>↗
+      <select class="handicap" data-pos="tr">
+        <option value="0">なし</option>
+        <option value="1">くろ</option>
+        <option value="2">しろ</option>
+      </select>
+    </label>
+    <label>↙
+      <select class="handicap" data-pos="bl">
+        <option value="0">なし</option>
+        <option value="1">くろ</option>
+        <option value="2">しろ</option>
+      </select>
+    </label>
+    <label>↘
+      <select class="handicap" data-pos="br">
+        <option value="0">なし</option>
+        <option value="1">くろ</option>
+        <option value="2">しろ</option>
+      </select>
+    </label>
   </div>
   <table id="board"></table>
   <button id="reset">リセット</button>
@@ -125,15 +156,16 @@
       grid = Array.from({length: size}, () => Array(size).fill(EMPTY));
       grid[3][3] = WHITE; grid[3][4] = BLACK;
       grid[4][3] = BLACK; grid[4][4] = WHITE;
+      messageEl.textContent = '';
+      messageEl.classList.remove('winner');
 
-      const color = +document.getElementById('handiColor').value;
       document.querySelectorAll('.handicap').forEach(h => {
-        if (h.checked) {
-          if (h.dataset.pos === 'tl') grid[0][0] = color;
-          if (h.dataset.pos === 'tr') grid[0][size-1] = color;
-          if (h.dataset.pos === 'bl') grid[size-1][0] = color;
-          if (h.dataset.pos === 'br') grid[size-1][size-1] = color;
-        }
+        const val = +h.value;
+        if (val === 0) return;
+        if (h.dataset.pos === 'tl') grid[0][0] = val;
+        if (h.dataset.pos === 'tr') grid[0][size-1] = val;
+        if (h.dataset.pos === 'bl') grid[size-1][0] = val;
+        if (h.dataset.pos === 'br') grid[size-1][size-1] = val;
       });
 
       for (let y = 0; y < size; y++) {
@@ -237,7 +269,7 @@
 
   function showMessage(msg) {
     messageEl.textContent = msg;
-    setTimeout(() => { messageEl.textContent = ''; }, 1500);
+    setTimeout(() => { if(!messageEl.classList.contains('winner')) messageEl.textContent = ''; }, 1500);
   }
 
   function countFlips(x, y, color) {
@@ -262,18 +294,17 @@
   function playSound() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const now = audioCtx.currentTime;
-    [0, 0.1].forEach(off => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'square';
-      osc.frequency.value = 800;
-      gain.gain.setValueAtTime(0.2, now + off);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + off + 0.05);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now + off);
-      osc.stop(now + off + 0.05);
-    });
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = 500;
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
   }
 
     function canPut(x, y, color) {
@@ -317,21 +348,24 @@
     }
 
     function animateFlip(cells) {
-      for (const [x, y] of cells) {
+      cells.forEach(([x, y], i) => {
         const cell = board.rows[y].cells[x];
         const disk = cell.querySelector('.disk');
         if (disk) {
-          disk.classList.add('flipped');
-          requestAnimationFrame(() => disk.classList.remove('flipped'));
+          setTimeout(() => {
+            disk.classList.add('flipped');
+            setTimeout(() => disk.classList.remove('flipped'), 300);
+          }, i * 80);
         }
-      }
+      });
     }
 
-    function showWinner() {
-      const [b, w] = getScore();
-      if (b === w) showMessage('ひきわけ');
-      else showMessage(b > w ? 'くろのかち!' : 'しろのかち!');
-    }
+  function showWinner() {
+    const [b, w] = getScore();
+    messageEl.classList.add('winner');
+    if (b === w) messageEl.textContent = 'ひきわけ';
+    else messageEl.textContent = b > w ? 'くろのかち!' : 'しろのかち!';
+  }
 
     init();
   </script>
