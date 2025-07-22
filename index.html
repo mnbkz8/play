@@ -48,9 +48,11 @@
     }
     .count {
       position: absolute;
-      bottom: 2px;
-      right: 2px;
-      font-size: 0.6em;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1em;
+      font-weight: bold;
       color: #d33;
       pointer-events: none;
     }
@@ -83,11 +85,24 @@
   </style>
 </head>
 <body>
-  <h1>リバーシ（2人対戦）</h1>
-  <div id="turn">黒の番です</div>
+  <h1>リバーシ</h1>
+  <div id="turn">くろのばんだよ</div>
   <div id="score"></div>
   <div id="message"></div>
-  <p>タップして石を置いてね</p>
+  <p>タップしていしをおいてね</p>
+  <div id="options">
+    <label><input type="checkbox" id="showBlack" checked>くろゴースト</label>
+    <label><input type="checkbox" id="showWhite" checked>しろゴースト</label>
+    <span>かど:</span>
+    <label><input type="checkbox" class="handicap" data-pos="tl">↖</label>
+    <label><input type="checkbox" class="handicap" data-pos="tr">↗</label>
+    <label><input type="checkbox" class="handicap" data-pos="bl">↙</label>
+    <label><input type="checkbox" class="handicap" data-pos="br">↘</label>
+    <select id="handiColor">
+      <option value="1">くろ</option>
+      <option value="2">しろ</option>
+    </select>
+  </div>
   <table id="board"></table>
   <button id="reset">リセット</button>
 
@@ -110,6 +125,16 @@
       grid = Array.from({length: size}, () => Array(size).fill(EMPTY));
       grid[3][3] = WHITE; grid[3][4] = BLACK;
       grid[4][3] = BLACK; grid[4][4] = WHITE;
+
+      const color = +document.getElementById('handiColor').value;
+      document.querySelectorAll('.handicap').forEach(h => {
+        if (h.checked) {
+          if (h.dataset.pos === 'tl') grid[0][0] = color;
+          if (h.dataset.pos === 'tr') grid[0][size-1] = color;
+          if (h.dataset.pos === 'bl') grid[size-1][0] = color;
+          if (h.dataset.pos === 'br') grid[size-1][size-1] = color;
+        }
+      });
 
       for (let y = 0; y < size; y++) {
         const row = board.insertRow();
@@ -136,21 +161,25 @@
         }
       }
 
+      const showB = document.getElementById('showBlack').checked;
+      const showW = document.getElementById('showWhite').checked;
       const valid = getValidMoves(current);
       for (const [x, y] of valid) {
-        const cell = board.rows[y].cells[x];
-        const ghost = document.createElement("div");
-        ghost.className =
-          "disk ghost " + (current === BLACK ? "black" : "white");
-        const cnt = document.createElement("div");
-        cnt.className = 'count';
-        cnt.textContent = countFlips(x, y, current);
-        ghost.appendChild(cnt);
-        cell.appendChild(ghost);
+        if ((current === BLACK && showB) || (current === WHITE && showW)) {
+          const cell = board.rows[y].cells[x];
+          const ghost = document.createElement("div");
+          ghost.className =
+            "disk ghost " + (current === BLACK ? "black" : "white");
+          const cnt = document.createElement("div");
+          cnt.className = 'count';
+          cnt.textContent = countFlips(x, y, current);
+          ghost.appendChild(cnt);
+          cell.appendChild(ghost);
+        }
       }
 
       document.getElementById("turn").textContent =
-        current === BLACK ? "黒の番です" : "白の番です";
+        current === BLACK ? "くろのばんだよ" : "しろのばんだよ";
       updateScore();
     }
 
@@ -169,7 +198,7 @@
           render();
           return;
         } else {
-          showMessage((current === BLACK ? '黒' : '白') + 'は置ける場所がありません。パスします');
+          showMessage((current === BLACK ? 'くろ' : 'しろ') + 'はおけるところがないよ。パスするね');
           current = other;
         }
       }
@@ -203,7 +232,7 @@
 
   function updateScore() {
     const [b, w] = getScore();
-    scoreEl.textContent = `黒:${b} 白:${w}`;
+    scoreEl.textContent = `くろ:${b} しろ:${w}`;
   }
 
   function showMessage(msg) {
@@ -232,16 +261,19 @@
 
   function playSound() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'square';
-    osc.frequency.value = 500;
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.2);
+    const now = audioCtx.currentTime;
+    [0, 0.1].forEach(off => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.2, now + off);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + off + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + off);
+      osc.stop(now + off + 0.05);
+    });
   }
 
     function canPut(x, y, color) {
@@ -297,8 +329,8 @@
 
     function showWinner() {
       const [b, w] = getScore();
-      if (b === w) showMessage('引き分け');
-      else showMessage(b > w ? '黒の勝ち!' : '白の勝ち!');
+      if (b === w) showMessage('ひきわけ');
+      else showMessage(b > w ? 'くろのかち!' : 'しろのかち!');
     }
 
     init();
